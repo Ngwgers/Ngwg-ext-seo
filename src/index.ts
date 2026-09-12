@@ -2,10 +2,12 @@
 //
 //   ngwg-helper-v1
 //     helpers     : seoMeta(page, site)   → OpenGraph/Twitter/canonical meta block
+//                   (emits og:locale from the page's i18n context when present)
 //     buildData   : exposes the plugin options to themes via site.extra.seo
 //                   (generateSitemap / generateRSS / rssPath / sitemapPath / siteUrl)
 //     afterDeploy : writes public/sitemap.xml and public/rss.xml after the
-//                   primary deployer finished (Core invokes the optional hook)
+//                   primary deployer finished (Core invokes the optional hook;
+//                   rss.xml gets a <language> element from DeployEnv.language)
 //
 // Options (defaults true). Two equivalent channels:
 //   plugins:                    # new: object declaration + ngwg-option-v1
@@ -111,14 +113,21 @@ function descriptionOf(page: SeoPage, site: SeoSite): string {
 
 // --- helper functions exposed to themes -------------------------------------
 
-/** Full SEO meta block for the current page: description, canonical, OpenGraph, Twitter Card. */
-export function seoMeta(page: SeoPage, site: SeoSite): string {
+/**
+ * Full SEO meta block for the current page: description, canonical, OpenGraph, Twitter Card.
+ * The template engine binds `this` to the page's root render context, which
+ * carries the deployment language (`language`, lang_REGION form) — emitted as
+ * `og:locale` (same lang_REGION spelling). Direct calls without `this` simply
+ * omit the locale tag.
+ */
+export function seoMeta(this: any, page: SeoPage, site: SeoSite): string {
   const title = pageTitle(page, site);
   const description = descriptionOf(page, site);
   const url = absolute(site, page?.url ?? "/");
   const isPost = page?.kind === "post";
   const ogType = isPost ? "article" : "website";
   const image = page?.meta?.cover ?? page?.meta?.image;
+  const locale = typeof this?.language === "string" && this.language ? this.language : undefined;
 
   const tags: string[] = [
     `<meta name="description" content="${escapeHtml(description)}">`,
@@ -129,6 +138,7 @@ export function seoMeta(page: SeoPage, site: SeoSite): string {
     `<meta name="twitter:title" content="${escapeHtml(title)}">`,
     `<meta name="twitter:description" content="${escapeHtml(description)}">`,
   ];
+  if (locale) tags.push(`<meta property="og:locale" content="${escapeHtml(locale)}">`);
   if (originOf(site)) {
     tags.push(`<link rel="canonical" href="${escapeHtml(url)}">`);
     tags.push(`<meta property="og:url" content="${escapeHtml(url)}">`);
@@ -148,9 +158,19 @@ function originOf(site: SeoSite): string {
 
 const RSS_ITEMS = 20;
 
+function normalizeLangTag(raw: string | undefined | null): string {
+  if (typeof raw !== "string") return "";
+  const s = raw.trim().split(/[.@]/)[0];
+  const parts = s.replace(/-/g, "_").split("_").filter(Boolean);
+  if (parts.length === 0 || !/^[a-z]+$/i.test(parts[0])) return "";
+  const lang = parts[0].toLowerCase();
+  if (parts[1] === undefined) return lang;
+  return /^[a-z0-9]+$/i.test(parts[1]) ? `${lang}_${parts[1].toUpperCase()}` : lang;
+}
+
 export const helper = {
   name: "seo",
-  version: "0.1.0",
+  version: "0.2.0",
 
   helpers: {
     seoMeta,
@@ -192,7 +212,10 @@ export const helper = {
       const file = path.join(env.publicDir, "rss.xml");
       ctx.log.debug(`write ${file}`);
       await mkdir(env.publicDir, { recursive: true });
-      await writeFile(file, buildRss(env.site));
+      // deployment language (lang_REGION) → RSS <language> (zh-cn style);
+      // env.language comes from Core, falling back to the theme default
+      const lang = normalizeLangTag(env.language ?? env.theme?.config?.default_language);
+      await writeFile(file, buildRss(env.site, lang || undefined));
     }
   },
 };
@@ -239,9 +262,12 @@ export function buildSitemap(site: any): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-export function buildRss(site: any): string {
+export function buildRss(site: any, language?: string): string {
   const posts = (site?.posts ?? []).slice(0, RSS_ITEMS);
   const link = originOf(site) + joinUrl(site?.baseurl ?? "/", "/");
+  // RSS 2.0 <language> uses hyphenated lowercase ("zh-cn", "en-us")
+  const langLine =
+    typeof language === "string" && language ? `    <language>${language.replace(/_/g, "-").toLowerCase()}</language>\n` : "";
   const items = posts
     .map((post: any) => {
       const url = originOf(site) + joinUrl(site?.baseurl ?? "/", post.url);
@@ -260,7 +286,7 @@ export function buildRss(site: any): string {
     <title>${escapeXml(site?.title ?? "untitled site")}</title>
     <link>${escapeXml(link)}</link>
     <description>${escapeXml(site?.description ?? "")}</description>
-    <atom:link href="${escapeXml(originOf(site) + (site?.extra?.seo?.rssPath ?? "/rss.xml"))}" rel="self" type="application/rss+xml"/>
+${langLine}    <atom:link href="${escapeXml(originOf(site) + (site?.extra?.seo?.rssPath ?? "/rss.xml"))}" rel="self" type="application/rss+xml"/>
 ${items}
   </channel>
 </rss>

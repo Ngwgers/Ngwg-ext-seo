@@ -6,7 +6,7 @@ SEO 扩展插件，只实现 **ngwg-helper-v1** 协议（含可选的 `afterDepl
 
 | 能力 | 说明 |
 | --- | --- |
-| `{{{ @ seoMeta page site }}}` | 当前页面的完整 meta 块：description、canonical、OpenGraph（og:title/og:type/og:url/og:site_name/og:image/article:published_time）、Twitter Card |
+| `{{{ @ seoMeta page site }}}` | 当前页面的完整 meta 块：description、canonical、OpenGraph（og:title/og:type/og:url/og:site_name/og:locale/og:image/article:published_time）、Twitter Card；`og:locale` 来自部署语言（i18n 主题），`rss.xml` 亦带 `<language>` |
 | `{{@ absoluteUrl path site }}` | origin + baseurl + path 的绝对 URL |
 | `sitemap.xml` | 首页、文章、页面、归档、标签页、分类页（`generateSitemap` 控制，默认开） |
 | `rss.xml` | 最近 20 篇文章的 RSS 2.0 feed（`generateRSS` 控制，默认开） |
@@ -65,7 +65,7 @@ The SEO extension plugin. It only implements the **ngwg-helper-v1** protocol (in
 
 | Capability | Description |
 | --- | --- |
-| `{{{ @ seoMeta page site }}}` | A complete meta block for the current page: description, canonical, OpenGraph (og:title/og:type/og:url/og:site_name/og:image/article:published_time), Twitter Card |
+| `{{{ @ seoMeta page site }}}` | A complete meta block for the current page: description, canonical, OpenGraph (og:title/og:type/og:url/og:site_name/og:locale/og:image/article:published_time), Twitter Card; `og:locale` comes from the deployment language (i18n themes) and `rss.xml` also carries a `<language>` element |
 | `{{@ absoluteUrl path site }}` | Absolute URL from origin + baseurl + path |
 | `sitemap.xml` | Home page, posts, pages, archive, tag and category pages (controlled by `generateSitemap`, on by default) |
 | `rss.xml` | An RSS 2.0 feed of the 20 most recent posts (controlled by `generateRSS`, on by default) |
