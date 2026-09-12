@@ -141,7 +141,6 @@ function originOf(site: SeoSite): string {
 const RSS_ITEMS = 20;
 
 export const helper = {
-  protocol: "ngwg-helper-v1" as const,
   name: "seo",
   version: "0.1.0",
 
@@ -260,4 +259,4 @@ ${items}
 `;
 }
 
-export default { plugins: [helper] };
+export default { helpers: [helper] };
