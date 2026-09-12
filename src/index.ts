@@ -7,11 +7,19 @@
 //     afterDeploy : writes public/sitemap.xml and public/rss.xml after the
 //                   primary deployer finished (Core invokes the optional hook)
 //
-// Options (ngwg.yaml, defaults true):
-//   plugin:
+// Options (defaults true). Two equivalent channels:
+//   plugins:                    # new: object declaration + ngwg-option-v1
+//     seo:
+//       url: …
+//       option:
+//         generateSitemap: true
+//         generateRSS: true
+//   plugin:                     # legacy: read straight from the site config
 //     seo:
 //       generateSitemap: true
 //       generateRSS: true
+// The ngwg-option-v1 unit below declares the public option keys (other
+// opted-in plugins may collaborate on them via ctx.options.shared).
 //
 // Themes read site.extra.seo.* to decide whether to render RSS/Sitemap
 // footer links, and call {{{ @ seoMeta page site }}} in <head> (guarded by
@@ -154,7 +162,7 @@ export const helper = {
 
   /** step 7: publish the option values to themes via site.extra.seo */
   buildData(ctx: any) {
-    const opts = ctx?.config?.plugin?.seo ?? {};
+    const opts = { ...(ctx?.config?.plugin?.seo ?? {}), ...(ctx?.options?.self ?? {}) };
     const flag = (v: any) => v !== false; // default on
     return {
       seo: {
@@ -259,4 +267,15 @@ ${items}
 `;
 }
 
-export default { helpers: [helper] };
+// ngwg-option-v1: opts in to the option system; every option is public —
+// themes already read them via site.extra.seo, so cross-plugin collaboration
+// is safe; no secrets, nothing private.
+export const options = {
+  name: "seo-options",
+  version: "1.0.0",
+  public: ["generateSitemap", "generateRSS", "rssPath", "sitemapPath", "siteUrl"],
+  private: [],
+  readShared: false,
+};
+
+export default { helpers: [helper], options: [options] };
