@@ -1,6 +1,6 @@
 {
   "name": "ngwg-ext-seo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Ngwg extension plugin: SEO meta generation (OpenGraph/Twitter/canonical), sitemap.xml and rss.xml",
   "type": "module",
   "module": "src/index.ts"
